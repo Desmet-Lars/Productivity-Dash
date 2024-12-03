@@ -1,21 +1,21 @@
-import { Inter } from 'next/font/google';
+'use client';
+
 import './globals.css';
-import { AuthProvider } from '@/contexts/AuthContext';
+import { Inter } from 'next/font/google';
+import ClientLayout from './ClientLayout';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata = {
   title: 'Productivity Dashboard',
-  description: 'Organize your tasks, schedule, and notes in one place',
+  description: 'A modern productivity dashboard',
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className={inter.className}>
-        <AuthProvider>
-          {children}
-        </AuthProvider>
+    <html lang="en" className={inter.className}>
+      <body suppressHydrationWarning={true}>
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );
