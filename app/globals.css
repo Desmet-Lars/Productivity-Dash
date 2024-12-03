@@ -3,9 +3,8 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --foreground-rgb: 0, 0, 0;
-    --background-rgb: 249, 250, 251;
+  html {
+    @apply antialiased;
   }
 
   body {
