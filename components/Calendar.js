@@ -222,6 +222,7 @@ const CalendarView = () => {
 
   const days = getDaysInMonth();
   const dateEvents = events[selectedDate.toISOString().split('T')[0]] || [];
+  const today = new Date();
 
   return (
     <div className="space-y-4">
@@ -263,6 +264,7 @@ const CalendarView = () => {
         {days.map((date) => {
           const isSelected = isSameDay(date, selectedDate);
           const isCurrentMonth = isSameMonth(date, currentDate);
+          const isToday = isSameDay(date, today);
 
           return (
             <button
@@ -272,11 +274,19 @@ const CalendarView = () => {
                 p-1 relative h-14 rounded-lg transition-all duration-200
                 ${isSelected ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}
                 ${!isCurrentMonth && 'text-gray-400'}
+                ${isToday ? 'font-bold' : ''}
               `}
             >
-              <span className={`text-sm ${isSelected ? 'font-medium' : ''}`}>
-                {format(date, 'd')}
-              </span>
+              <div className="relative">
+                <span className={`text-sm ${isSelected ? 'font-medium' : ''}`}>
+                  {format(date, 'd')}
+                </span>
+                {isToday && (
+                  <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
+                    <div className="h-1 w-1 bg-blue-500 rounded-full"></div>
+                  </div>
+                )}
+              </div>
               {renderEventDots(date)}
             </button>
           );
