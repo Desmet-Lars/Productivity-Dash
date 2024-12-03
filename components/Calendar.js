@@ -1,10 +1,18 @@
 'use client';
-import Calendar from 'react-calendar';
-import 'react-calendar/dist/Calendar.css';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/FirebaseConfig';
 import { collection, query, where, addDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import {
+  format,
+  startOfMonth,
+  endOfMonth,
+  eachDayOfInterval,
+  isSameMonth,
+  isSameDay,
+  addMonths,
+  subMonths,
+} from 'date-fns';
 
 const COLORS = [
   { name: 'Blue', value: 'bg-blue-500' },
@@ -16,6 +24,8 @@ const COLORS = [
   { name: 'Indigo', value: 'bg-indigo-500' },
   { name: 'Orange', value: 'bg-orange-500' },
 ];
+
+const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 const EventModal = ({ onClose, onSave, selectedDate }) => {
   const [eventData, setEventData] = useState({
@@ -107,10 +117,10 @@ const EventModal = ({ onClose, onSave, selectedDate }) => {
 };
 
 const CalendarView = () => {
-  const [value, setValue] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [events, setEvents] = useState({});
   const [showEventModal, setShowEventModal] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(null);
   const [isClient, setIsClient] = useState(false);
   const { user } = useAuth();
 
@@ -174,18 +184,19 @@ const CalendarView = () => {
     }
   };
 
-  const handleDateClick = (date) => {
-    setValue(date);
-    setSelectedDate(date);
+  const getDaysInMonth = () => {
+    const start = startOfMonth(currentDate);
+    const end = endOfMonth(currentDate);
+    return eachDayOfInterval({ start, end });
   };
 
-  const tileContent = ({ date }) => {
+  const renderEventDots = (date) => {
     const dateKey = date.toISOString().split('T')[0];
     const dateEvents = events[dateKey] || [];
 
     if (dateEvents.length > 0) {
       return (
-        <div className="absolute inset-x-0 bottom-1 flex justify-center gap-0.5">
+        <div className="flex justify-center gap-0.5 mt-1">
           {dateEvents.slice(0, 3).map((event, index) => (
             <div
               key={event.id}
@@ -209,65 +220,74 @@ const CalendarView = () => {
     );
   }
 
-  const dateEvents = events[value.toISOString().split('T')[0]] || [];
+  const days = getDaysInMonth();
+  const dateEvents = events[selectedDate.toISOString().split('T')[0]] || [];
 
   return (
     <div className="space-y-4">
-      <style jsx global>{`
-        .react-calendar__tile {
-          position: relative;
-          height: 44px;
-          display: flex;
-          flex-direction: column;
-          justify-content: flex-start;
-          align-items: center;
-          padding-top: 12px;
-        }
-        .react-calendar__month-view__days__day {
-          padding: 8px 0 !important;
-        }
-        .react-calendar__tile:enabled:hover,
-        .react-calendar__tile:enabled:focus {
-          background-color: #f3f4f6 !important;
-        }
-        .react-calendar__tile--active {
-          background-color: #eff6ff !important;
-          color: #2563eb !important;
-        }
-        .react-calendar__tile--now {
-          background-color: transparent !important;
-        }
-        .react-calendar__tile--now abbr {
-          border-bottom: 2px solid #2563eb;
-          padding-bottom: 2px;
-        }
-        .react-calendar__navigation button:enabled:hover,
-        .react-calendar__navigation button:enabled:focus {
-          background-color: #f3f4f6 !important;
-        }
-        .react-calendar__navigation button[disabled] {
-          background-color: transparent !important;
-        }
-      `}</style>
-      <Calendar
-        onChange={setValue}
-        value={value}
-        className="w-full border-none rounded-lg shadow-sm bg-white"
-        tileClassName={({ date }) => {
-          const dateKey = date.toISOString().split('T')[0];
-          const hasEvents = events[dateKey]?.length > 0;
-          return `rounded hover:bg-gray-50 transition-colors ${
-            value.toDateString() === date.toDateString() ? 'bg-blue-50 text-blue-600' : ''
-          } ${hasEvents ? 'font-medium' : ''}`;
-        }}
-        tileContent={tileContent}
-        onClickDay={handleDateClick}
-      />
+      {/* Calendar Header */}
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-lg font-semibold text-gray-900">
+          {format(currentDate, 'MMMM yyyy')}
+        </h2>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setCurrentDate(subMonths(currentDate, 1))}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+          <button
+            onClick={() => setCurrentDate(addMonths(currentDate, 1))}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
+      </div>
 
+      {/* Calendar Grid */}
+      <div className="grid grid-cols-7 gap-1">
+        {/* Weekday Headers */}
+        {WEEKDAYS.map((day) => (
+          <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+            {day}
+          </div>
+        ))}
+
+        {/* Calendar Days */}
+        {days.map((date) => {
+          const isSelected = isSameDay(date, selectedDate);
+          const isCurrentMonth = isSameMonth(date, currentDate);
+
+          return (
+            <button
+              key={date.toISOString()}
+              onClick={() => setSelectedDate(date)}
+              className={`
+                p-1 relative h-14 rounded-lg transition-all duration-200
+                ${isSelected ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}
+                ${!isCurrentMonth && 'text-gray-400'}
+              `}
+            >
+              <span className={`text-sm ${isSelected ? 'font-medium' : ''}`}>
+                {format(date, 'd')}
+              </span>
+              {renderEventDots(date)}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Events List */}
       <div className="bg-gray-50 rounded-lg p-3">
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-sm font-medium text-gray-900">
-            {value.toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}
+            {format(selectedDate, 'MMMM d, yyyy')}
           </h3>
           <button
             onClick={() => setShowEventModal(true)}
