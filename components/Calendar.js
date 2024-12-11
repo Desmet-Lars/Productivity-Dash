@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/lib/FirebaseConfig';
 import { collection, query, where, addDoc, deleteDoc, doc, getDocs } from 'firebase/firestore';
@@ -15,7 +15,7 @@ import {
 } from 'date-fns';
 
 const COLORS = [
-  { name: 'Blue', value: 'bg-blue-500' },
+  { name: 'Blue', value: 'bg-primary-500' },
   { name: 'Red', value: 'bg-red-500' },
   { name: 'Green', value: 'bg-green-500' },
   { name: 'Purple', value: 'bg-purple-500' },
@@ -27,25 +27,24 @@ const COLORS = [
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const EventModal = ({ onClose, onSave, selectedDate }) => {
-  const [eventData, setEventData] = useState({
-    title: '',
-    description: '',
-    color: COLORS[0].value
-  });
+const EventModal = ({ selectedDate, onClose, onSave }) => {
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [color, setColor] = useState(COLORS[0].value);
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(eventData);
-    setEventData({ title: '', description: '', color: COLORS[0].value });
+    onSave({ title, description, color });
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" onClick={onClose}>
-      <div className="bg-white rounded-lg p-4 w-full max-w-md mx-4" onClick={e => e.stopPropagation()}>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+      <div className="bg-white dark:bg-dark-card rounded-lg p-4 w-full max-w-md mx-4 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">New Event</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-dark-text">
+            Add Event for {format(selectedDate, 'MMMM d, yyyy')}
+          </h3>
+          <button onClick={onClose} className="text-gray-400 dark:text-gray-500 hover:text-gray-500 dark:hover:text-gray-400">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -53,43 +52,40 @@ const EventModal = ({ onClose, onSave, selectedDate }) => {
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Event Title
             </label>
             <input
               type="text"
-              value={eventData.title}
-              onChange={(e) => setEventData({ ...eventData, title: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-200"
-              placeholder="Enter event title..."
-              autoFocus
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white dark:focus:bg-dark-card transition-all duration-200 text-gray-900 dark:text-dark-text"
+              required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Description
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Description (optional)
             </label>
             <textarea
-              value={eventData.description}
-              onChange={(e) => setEventData({ ...eventData, description: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all duration-200 resize-none h-24"
-              placeholder="Enter event description..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-50 dark:bg-dark-bg border border-gray-200 dark:border-dark-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:bg-white dark:focus:bg-dark-card transition-all duration-200 text-gray-900 dark:text-dark-text resize-none h-24"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Event Color
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Color
             </label>
             <div className="flex flex-wrap gap-2">
-              {COLORS.map((color) => (
+              {COLORS.map((c) => (
                 <button
-                  key={color.value}
+                  key={c.value}
                   type="button"
-                  onClick={() => setEventData({ ...eventData, color: color.value })}
-                  className={`w-8 h-8 rounded-full ${color.value} transition-transform duration-200 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-                    eventData.color === color.value ? 'ring-2 ring-offset-2 ring-blue-500 scale-110' : ''
+                  onClick={() => setColor(c.value)}
+                  className={`w-6 h-6 rounded-full ${c.value} transition-transform duration-200 ${
+                    color === c.value ? 'ring-2 ring-offset-2 ring-gray-400 dark:ring-gray-600 scale-110' : 'hover:scale-110'
                   }`}
-                  title={color.name}
                 />
               ))}
             </div>
@@ -98,14 +94,13 @@ const EventModal = ({ onClose, onSave, selectedDate }) => {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 bg-gray-100 rounded-lg hover:bg-gray-200 transition-all duration-200"
+              className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-dark-border rounded-lg hover:bg-gray-200 dark:hover:bg-dark-bg transition-all duration-200"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={!eventData.title.trim()}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 text-sm font-medium text-white bg-primary-500 rounded-lg hover:bg-primary-600 transition-all duration-200"
             >
               Add Event
             </button>
@@ -116,13 +111,19 @@ const EventModal = ({ onClose, onSave, selectedDate }) => {
   );
 };
 
-const CalendarView = () => {
+const CalendarView = forwardRef((props, ref) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [events, setEvents] = useState({});
   const [showEventModal, setShowEventModal] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const { user } = useAuth();
+
+  useImperativeHandle(ref, () => ({
+    openEventModal: () => {
+      setShowEventModal(true);
+    }
+  }));
 
   useEffect(() => {
     setIsClient(true);
@@ -200,11 +201,11 @@ const CalendarView = () => {
           {dateEvents.slice(0, 3).map((event, index) => (
             <div
               key={event.id}
-              className={`h-1 w-1 rounded-full ${event.color || 'bg-blue-500'}`}
+              className={`h-1 w-1 rounded-full ${event.color || 'bg-primary-500'}`}
             />
           ))}
           {dateEvents.length > 3 && (
-            <div className="h-1 w-1 rounded-full bg-gray-300" />
+            <div className="h-1 w-1 rounded-full bg-gray-300 dark:bg-gray-600" />
           )}
         </div>
       );
@@ -215,7 +216,7 @@ const CalendarView = () => {
   if (!isClient) {
     return (
       <div className="animate-pulse">
-        <div className="h-[300px] bg-gray-100 rounded-lg"></div>
+        <div className="h-[300px] bg-gray-100 dark:bg-dark-card rounded-lg"></div>
       </div>
     );
   }
@@ -228,23 +229,23 @@ const CalendarView = () => {
     <div className="space-y-4">
       {/* Calendar Header */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-semibold text-gray-900">
+        <h2 className="text-lg font-semibold text-gray-900 dark:text-dark-text">
           {format(currentDate, 'MMMM yyyy')}
         </h2>
         <div className="flex gap-2">
           <button
             onClick={() => setCurrentDate(subMonths(currentDate, 1))}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-dark-border rounded-lg transition-colors text-gray-600 dark:text-gray-400"
           >
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
             </svg>
           </button>
           <button
             onClick={() => setCurrentDate(addMonths(currentDate, 1))}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-dark-border rounded-lg transition-colors text-gray-600 dark:text-gray-400"
           >
-            <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
             </svg>
           </button>
@@ -252,10 +253,10 @@ const CalendarView = () => {
       </div>
 
       {/* Calendar Grid */}
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-1 sm:gap-2">
         {/* Weekday Headers */}
         {WEEKDAYS.map((day) => (
-          <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+          <div key={day} className="text-center text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 py-1 sm:py-2">
             {day}
           </div>
         ))}
@@ -272,8 +273,8 @@ const CalendarView = () => {
               onClick={() => setSelectedDate(date)}
               className={`
                 p-1 relative h-14 rounded-lg transition-all duration-200
-                ${isSelected ? 'bg-blue-50 text-blue-600' : 'hover:bg-gray-50'}
-                ${!isCurrentMonth && 'text-gray-400'}
+                ${isSelected ? 'bg-primary-50 dark:bg-primary-500/20 text-primary-600 dark:text-primary-400' : 'hover:bg-gray-50 dark:hover:bg-dark-border'}
+                ${!isCurrentMonth && 'text-gray-400 dark:text-gray-600'}
                 ${isToday ? 'font-bold' : ''}
               `}
             >
@@ -283,7 +284,7 @@ const CalendarView = () => {
                 </span>
                 {isToday && (
                   <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
-                    <div className="h-1 w-1 bg-blue-500 rounded-full"></div>
+                    <div className="h-1 w-1 bg-primary-500 rounded-full"></div>
                   </div>
                 )}
               </div>
@@ -294,14 +295,14 @@ const CalendarView = () => {
       </div>
 
       {/* Events List */}
-      <div className="bg-gray-50 rounded-lg p-3">
+      <div className="bg-gray-50 dark:bg-dark-card rounded-lg p-3">
         <div className="flex justify-between items-center mb-3">
-          <h3 className="text-sm font-medium text-gray-900">
+          <h3 className="text-sm font-medium text-gray-900 dark:text-dark-text">
             {format(selectedDate, 'MMMM d, yyyy')}
           </h3>
           <button
             onClick={() => setShowEventModal(true)}
-            className="text-sm text-blue-500 hover:text-blue-600 flex items-center gap-1"
+            className="text-sm text-primary-500 hover:text-primary-600 dark:text-primary-400 dark:hover:text-primary-300 flex items-center gap-1"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />
@@ -311,27 +312,27 @@ const CalendarView = () => {
         </div>
 
         {dateEvents.length === 0 ? (
-          <p className="text-sm text-gray-500 text-center py-3">No events scheduled</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-3">No events scheduled</p>
         ) : (
           <div className="space-y-2">
             {dateEvents.map((event) => (
               <div
                 key={event.id}
-                className="bg-white rounded-lg p-2 group hover:shadow-sm transition-all duration-200"
+                className="bg-white dark:bg-dark-bg rounded-lg p-2 group hover:shadow-sm transition-all duration-200"
               >
                 <div className="flex justify-between items-start gap-2">
                   <div className="flex items-start gap-2">
-                    <div className={`w-2 h-2 rounded-full mt-1.5 ${event.color || 'bg-blue-500'}`} />
+                    <div className={`w-2 h-2 rounded-full mt-1.5 ${event.color || 'bg-primary-500'}`} />
                     <div>
-                      <h4 className="text-sm font-medium text-gray-900">{event.title}</h4>
+                      <h4 className="text-sm font-medium text-gray-900 dark:text-dark-text">{event.title}</h4>
                       {event.description && (
-                        <p className="text-xs text-gray-500 mt-0.5">{event.description}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{event.description}</p>
                       )}
                     </div>
                   </div>
                   <button
                     onClick={() => deleteEvent(event.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-red-500 rounded hover:bg-gray-50 transition-all duration-200"
+                    className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 dark:text-gray-500 hover:text-red-500 dark:hover:text-red-400 rounded hover:bg-gray-50 dark:hover:bg-dark-border transition-all duration-200"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -353,6 +354,8 @@ const CalendarView = () => {
       )}
     </div>
   );
-};
+});
+
+CalendarView.displayName = 'CalendarView';
 
 export default CalendarView;
